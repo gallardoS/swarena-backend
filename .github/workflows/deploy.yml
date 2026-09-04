@@ -14,7 +14,7 @@ env:
   IMAGE_NAME: ghcr.io/gallardos/swarena-backend
 
 jobs:
-  test-build-deploy:
+  test-and-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,30 +55,42 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Configure deployment SSH key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+  deploy:
+    needs: test-and-publish
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - swarena-production
+    permissions:
+      contents: read
+      packages: read
 
-      - name: Upload deployment configuration
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
+    steps:
+      - name: Check out deployment configuration
+        uses: actions/checkout@v6
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install deployment configuration
         run: |
-          ssh ubuntu@"$EC2_HOST" 'mkdir -p /opt/swarena-backend'
-          scp deploy/compose.prod.yml deploy/Caddyfile ubuntu@"$EC2_HOST":/opt/swarena-backend/
+          sudo install -d -m 755 -o "$USER" -g "$USER" /opt/swarena-backend
+          install -m 644 deploy/compose.prod.yml /opt/swarena-backend/compose.prod.yml
+          install -m 644 deploy/Caddyfile /opt/swarena-backend/Caddyfile
 
       - name: Deploy image
         env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          printf '%s' "$GHCR_TOKEN" | ssh ubuntu@"$EC2_HOST" \
-            "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
-          ssh ubuntu@"$EC2_HOST" \
-            "cd /opt/swarena-backend && IMAGE_TAG='${{ github.sha }}' docker compose -f compose.prod.yml pull && IMAGE_TAG='${{ github.sha }}' docker compose -f compose.prod.yml up -d --wait"
-          ssh ubuntu@"$EC2_HOST" 'docker logout ghcr.io >/dev/null 2>&1 || true'
+          cd /opt/swarena-backend
+          docker compose -f compose.prod.yml pull
+          docker compose -f compose.prod.yml up -d --wait
+
+      - name: Log out from GitHub Container Registry
+        if: always()
+        run: docker logout ghcr.io >/dev/null 2>&1 || true
