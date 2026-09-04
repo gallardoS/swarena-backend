@@ -42,7 +42,7 @@ networks:
   edge:
   game:
     external: true
-    name: swarena-game_default
+    name: swarena-game_ac-network
 
 volumes:
   caddy_data:
