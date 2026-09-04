@@ -1,0 +1,49 @@
+name: swarena-backend
+
+services:
+  backend:
+    image: ghcr.io/gallardos/swarena-backend:${IMAGE_TAG:-latest}
+    container_name: swarena-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8080"
+    networks:
+      - edge
+      - game
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    mem_limit: 512m
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: swarena-caddy
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+
+networks:
+  edge:
+  game:
+    external: true
+    name: swarena-game_default
+
+volumes:
+  caddy_data:
+  caddy_config:

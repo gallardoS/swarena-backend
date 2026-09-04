@@ -1,0 +1,8 @@
+api.swami.dev {
+    encode zstd gzip
+
+    @private path /actuator/*
+    respond @private 404
+
+    reverse_proxy backend:8080
+}
