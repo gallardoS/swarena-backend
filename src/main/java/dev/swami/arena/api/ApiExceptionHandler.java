@@ -2,6 +2,7 @@ package dev.swami.arena.api;
 
 import dev.swami.arena.account.AccountAlreadyExistsException;
 import dev.swami.arena.account.RegistrationDisabledException;
+import dev.swami.arena.leaderboard.InvalidLeaderboardRequestException;
 import dev.swami.arena.turnstile.TurnstileVerificationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
-class ApiExceptionHandler {
+public class ApiExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
@@ -57,13 +58,23 @@ class ApiExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(InvalidLeaderboardRequestException.class)
+    ProblemDetail handleInvalidLeaderboardRequest(InvalidLeaderboardRequestException exception) {
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                "Invalid leaderboard request",
+                exception.getMessage(),
+                "INVALID_LEADERBOARD_REQUEST"
+        );
+    }
+
     @ExceptionHandler(DataAccessException.class)
     ProblemDetail handleDatabaseUnavailable(DataAccessException exception) {
-        LOGGER.error("Account registration database operation failed", exception);
+        LOGGER.error("Database operation failed", exception);
         return problem(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Service temporarily unavailable",
-                "The account could not be created right now",
+                "The requested operation could not be completed right now",
                 "DATABASE_UNAVAILABLE"
         );
     }

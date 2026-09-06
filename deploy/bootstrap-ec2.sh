@@ -27,6 +27,9 @@ docker compose --project-directory "$GAME_DIRECTORY" exec -T \
         GRANT INSERT ON acore_auth.account TO 'swarena_backend'@'%';
         GRANT INSERT ON acore_auth.realmcharacters TO 'swarena_backend'@'%';
         GRANT SELECT ON acore_auth.realmlist TO 'swarena_backend'@'%';
+        GRANT SELECT ON acore_characters.arena_team TO 'swarena_backend'@'%';
+        GRANT SELECT ON acore_characters.arena_team_member TO 'swarena_backend'@'%';
+        GRANT SELECT ON acore_characters.characters TO 'swarena_backend'@'%';
     "
 
 temporary_env="$DEPLOY_DIRECTORY/.env.new"

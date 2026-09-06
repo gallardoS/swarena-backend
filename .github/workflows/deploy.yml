@@ -83,6 +83,9 @@ jobs:
           install -m 644 deploy/compose.prod.yml /opt/swarena-backend/compose.prod.yml
           install -m 644 deploy/Caddyfile /opt/swarena-backend/Caddyfile
 
+      - name: Grant leaderboard database access
+        run: sh deploy/grant-leaderboard-read.sh
+
       - name: Deploy image
         env:
           IMAGE_TAG: ${{ github.sha }}
